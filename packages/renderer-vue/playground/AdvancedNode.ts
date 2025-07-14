@@ -3,7 +3,7 @@ import { ButtonInterface } from "../src";
 
 export default class AdvancedNode extends AbstractNode {
     public type = "AdvancedNode";
-    public title = this.type;
+    // public title = this.type;
 
     public inputs: Record<string, NodeInterface<any>> = {};
     public outputs: Record<string, NodeInterface<any>> = {};

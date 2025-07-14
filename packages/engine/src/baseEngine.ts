@@ -93,6 +93,8 @@ export abstract class BaseEngine<CalculationData, CalculationArgs extends Array<
     public constructor(protected editor: Editor) {
         this.editor.nodeEvents.update.subscribe(this, (data, node) => {
             if (node.graph && !node.graph.loading && node.graph.activeTransactions === 0) {
+                node.graph.changed_nodes.add(node.id);
+                node.graph.findAllNodeFromId(node.id);
                 this.internalOnChange(node, data ?? undefined);
             }
         });
@@ -188,8 +190,24 @@ export abstract class BaseEngine<CalculationData, CalculationArgs extends Array<
                 this.calculateOrder();
             }
 
-            const result = await this.execute(calculationData, ...args);
-            this.events.afterRun.emit(result);
+            const result : any = await this.execute(calculationData, ...args);
+            let calculationResult : CalculationResult = new Map();
+            const nodesData  = result.data['node_data'];
+            for (const nodeId in nodesData)
+            {
+                const nodeData = nodesData[nodeId]['outputs'];
+                let intfElem: Map<string, any> = new Map();
+                for (const param in nodeData)
+                {
+                    const intfData = nodeData[param];
+                    for (const intfId in intfData)
+                    {
+                        intfElem.set(intfId, intfData[intfId]); 
+                    }
+                }
+                calculationResult.set(nodeId, intfElem);
+            }
+            this.events.afterRun.emit(await calculationResult);
             return result;
         } finally {
             this.isRunning = false;
@@ -326,8 +344,8 @@ export abstract class BaseEngine<CalculationData, CalculationArgs extends Array<
     ): void;
 
     private internalOnChange(updatedNode?: AbstractNode, data?: INodeUpdateEventData) {
+        this.onChange(this.recalculateOrder, updatedNode, data);
         if (this.internalStatus === EngineStatus.Idle) {
-            this.onChange(this.recalculateOrder, updatedNode, data);
         }
     }
 

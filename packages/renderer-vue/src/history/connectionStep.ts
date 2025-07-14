@@ -15,8 +15,8 @@ export default class ConnectionStep implements IStep {
             const d = data as IConnection;
             this.connectionState = {
                 id: d.id,
-                from: d.from.id,
-                to: d.to.id,
+                from_id: d.from.id,
+                to_id: d.to.id,
             };
         }
     }
@@ -57,8 +57,8 @@ export default class ConnectionStep implements IStep {
         }
         this.connectionState = {
             id: connection.id,
-            from: connection.from.id,
-            to: connection.to.id,
+            from_id: connection.from.id,
+            to_id: connection.to.id,
         };
         graph.removeConnection(connection);
     }

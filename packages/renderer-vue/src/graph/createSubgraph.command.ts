@@ -58,8 +58,8 @@ export function registerCreateSubgraphCommand(
         const nodeStates: Array<INodeState<unknown, unknown>> = selectedNodes.map((n) => n.save());
         const connectionStates: IConnectionState[] = innerConnections.map((c) => ({
             id: c.id,
-            from: c.from.id,
-            to: c.to.id,
+            from_id: c.from.id,
+            to_id: c.to.id,
         }));
         const interfaceIdMap = new Map<string, string>();
         const { xLeft, xRight, yTop } = getBoundingBoxForNodes(selectedNodes);
@@ -71,7 +71,7 @@ export function registerCreateSubgraphCommand(
                 ...inputNode.save(),
                 position: { x: xRight - viewModel.value.settings.nodes.defaultWidth - 100, y: yTop + idx * 200 },
             } as Omit<IViewNodeState, "twoColumn" | "width">);
-            connectionStates.push({ id: uuidv4(), from: inputNode.outputs.placeholder.id, to: conn.to.id });
+            connectionStates.push({ id: uuidv4(), from_id: inputNode.outputs.placeholder.id, to_id: conn.to.id });
             interfaceIdMap.set(conn.to.id, inputNode.graphInterfaceId);
         }
         for (const [idx, conn] of outputConnections.entries()) {
@@ -81,7 +81,7 @@ export function registerCreateSubgraphCommand(
                 ...outputNode.save(),
                 position: { x: xLeft + 100, y: yTop + idx * 200 },
             } as Omit<IViewNodeState, "twoColumn" | "width">);
-            connectionStates.push({ id: uuidv4(), from: conn.from.id, to: outputNode.inputs.placeholder.id });
+            connectionStates.push({ id: uuidv4(), from_id: conn.from.id, to_id: outputNode.inputs.placeholder.id });
             interfaceIdMap.set(conn.from.id, outputNode.graphInterfaceId);
         }
 

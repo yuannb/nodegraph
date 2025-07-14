@@ -158,8 +158,8 @@ export class GraphTemplate implements IGraphState {
 
         const connections: IConnectionState[] = this.connections.map((c) => ({
             id: createNewId(c.id),
-            from: getNewId(c.from),
-            to: getNewId(c.to),
+            from_id: getNewId(c.from),
+            to_id: getNewId(c.to),
         }));
 
         const inputs: IGraphInterface[] = this.inputs.map((i) => ({

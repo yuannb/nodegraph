@@ -1,5 +1,5 @@
 import { computed, nextTick, Ref, ref, watch } from "vue";
-import { NodeInterface } from "@baklavajs/core";
+import { InterfaceType, NodeInterface } from "@baklavajs/core";
 
 const MAX_STRING_LENGTH = 9;
 
@@ -19,6 +19,7 @@ export class BaseNumericInterface extends NodeInterface<number> implements IVali
         super(name, value);
         this.min = min;
         this.max = max;
+        this.type = InterfaceType.numberData;
     }
 
     public validate(v: number) {

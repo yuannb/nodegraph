@@ -68,10 +68,11 @@
 import { ref, computed, nextTick, onUpdated, onMounted, onBeforeUnmount } from "vue";
 import { AbstractNode, GRAPH_NODE_TYPE_PREFIX, IGraphNode } from "@baklavajs/core";
 import { useGraph, useViewModel } from "../utility";
-
+import { inject } from 'vue';
 import { ContextMenu } from "../contextmenu";
 import VerticalDots from "../icons/VerticalDots.vue";
 import NodeInterface from "./NodeInterface.vue";
+const { hiddenGeometry, ChangeGeometryColor } = inject('grandparentMethods') as {hiddenGeometry: any, ChangeGeometryColor: any};
 const props = withDefaults(
     defineProps<{
         node: AbstractNode;
@@ -102,6 +103,7 @@ const contextMenuItems = computed(() => {
     const items = [
         { value: "rename", label: "Rename" },
         { value: "delete", label: "Delete" },
+        { value: "hidden", label: "Hidden" },
     ];
 
     if (props.node.type.startsWith(GRAPH_NODE_TYPE_PREFIX)) {
@@ -156,6 +158,9 @@ const onContextMenuClick = async (action: string) => {
             renaming.value = true;
             await nextTick();
             renameInputEl.value?.focus();
+            break;
+        case 'hidden':
+            hiddenGeometry(props.node.id);
             break;
         case "editSubgraph":
             switchGraph((props.node as AbstractNode & IGraphNode).template);

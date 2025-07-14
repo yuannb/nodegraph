@@ -26,6 +26,7 @@ export default defineConfig({
             },
         },
         minify: false,
+        sourcemap: true
     },
     plugins: [
         vue(),

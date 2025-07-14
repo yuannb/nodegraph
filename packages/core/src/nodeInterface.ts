@@ -7,16 +7,33 @@ import {
     IBaklavaTapable,
 } from "@baklavajs/events";
 
+export class InterfaceType {
+    // 基础配置相关
+    static readonly pointData: string = "pointData";
+    static readonly numberData: string = "numberData";
+    static readonly unkown: string = "unkown";
+  
+    // 私有构造函数，防止实例化（可选，根据需求）
+    private constructor() {
+      // 若不希望类被实例化，可添加此构造函数
+    }
+  }
+
 export interface INodeInterfaceState<T> extends Record<string, any> {
     id: string;
     templateId?: string | undefined;
     value: T;
+    type? : string;
 }
 
 export type NodeInterfaceMiddleware<T, A extends Array<any>> = (intf: NodeInterface<T>, ...args: A) => void;
 
 export class NodeInterface<T = any> implements IBaklavaEventEmitter, IBaklavaTapable {
     public id = uuidv4();
+
+    public fromInterface?: NodeInterface<any>;
+
+    public type? : string;
 
     /**
      * If the interface is instantiated by a graph template, this property will be
@@ -64,6 +81,9 @@ export class NodeInterface<T = any> implements IBaklavaEventEmitter, IBaklavaTap
     }
 
     private _value: T;
+
+    private _analytic_value: any;
+
     public set value(v: T) {
         if (this.events.beforeSetValue.emit(v).prevented) {
             return;
@@ -71,13 +91,27 @@ export class NodeInterface<T = any> implements IBaklavaEventEmitter, IBaklavaTap
         this._value = v;
         this.events.setValue.emit(v);
     }
+    
+    public set analytic_value(v: T) {
+        // if (this.events.beforeSetValue.emit(v).prevented) {
+        //     return;
+        // }
+        this._analytic_value = v;
+        // this.events.setValue.emit(v);
+    }
+
+    public get analytic_value(): any {
+        return this._analytic_value;
+    }
+    
     public get value(): T {
         return this._value;
     }
 
-    public constructor(name: string, value: T) {
+    public constructor(name: string, value: T, dataType: string = InterfaceType.unkown) {
         this.name = name;
         this._value = value;
+        this.type = dataType;
     }
 
     public load(state: INodeInterfaceState<T>): void {
@@ -92,6 +126,7 @@ export class NodeInterface<T = any> implements IBaklavaEventEmitter, IBaklavaTap
             id: this.id,
             templateId: this.templateId,
             value: this.value,
+            type : this.type
         };
         return this.hooks.save.execute(state);
     }

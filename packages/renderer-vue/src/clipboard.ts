@@ -49,7 +49,7 @@ export function useClipboard(
             .filter(
                 (conn) => interfacesOfSelectedNodes.includes(conn.from) || interfacesOfSelectedNodes.includes(conn.to),
             )
-            .map((conn) => ({ from: conn.from.id, to: conn.to.id }) as IConnectionState);
+            .map((conn) => ({ from_id: conn.from.id, to_id: conn.to.id }) as IConnectionState);
 
         connectionBuffer.value = JSON.stringify(connections);
         nodeBuffer.value = JSON.stringify(displayedGraph.value.selectedNodes.map((n) => n.save()));

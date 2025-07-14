@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, provide, Ref, ref, toRef } from "vue";
+import { computed, inject, provide, Ref, ref, toRef } from "vue";
 
 import { AbstractNode } from "@baklavajs/core";
 import { IBaklavaViewModel } from "../viewModel";
@@ -108,7 +108,7 @@ import Minimap from "../components/Minimap.vue";
 import NodePalette from "../nodepalette/NodePalette.vue";
 import Toolbar from "../toolbar/Toolbar.vue";
 import ContextMenu from "../contextmenu/ContextMenu.vue";
-
+const { ChangeGeometryColor, RevertGeometryColor } = inject('grandparentMethods') as {ChangeGeometryColor: any, RevertGeometryColor: any};
 const props = defineProps<{ viewModel: IBaklavaViewModel }>();
 
 const token = Symbol("EditorToken");
@@ -179,10 +179,12 @@ const selectNode = (node: AbstractNode) => {
     if (!["Control", "Shift"].some((k) => props.viewModel.commandHandler.pressedKeys.includes(k))) {
         unselectAllNodes();
     }
+    ChangeGeometryColor(node.getId());
     props.viewModel.displayedGraph.selectedNodes.push(node);
 };
 
 const unselectAllNodes = () => {
+    RevertGeometryColor(props.viewModel.displayedGraph.selectedNodes[0]?.getId());
     props.viewModel.displayedGraph.selectedNodes = [];
 };
 

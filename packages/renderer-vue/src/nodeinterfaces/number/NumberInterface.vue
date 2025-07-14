@@ -4,9 +4,7 @@
             <IconArrow />
         </div>
         <div v-if="!editMode" class="__content" @click="enterEditMode">
-            <div class="__label" :title="intf.name">
-                {{ intf.name }}
-            </div>
+
             <div class="__value">
                 {{ stringRepresentation }}
             </div>

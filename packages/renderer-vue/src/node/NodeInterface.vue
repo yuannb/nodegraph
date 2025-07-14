@@ -13,17 +13,15 @@
                 </span>
             </slot>
         </div>
-        <component
+        <component class="label-item, align-middle"
             :is="intf.component"
-            v-if="showComponent"
-            v-model="intf.value"
+            v-if="showComponent || intf.name === 'Panel'"
+            v-model="intf.analytic_value"
             :node="node"
             :intf="intf"
             @open-sidebar="openSidebar"
         />
-        <span v-else class="align-middle">
-            {{ intf.name }}
-        </span>
+            {{ intf.name === 'Panel' ? '' : intf.name }}
     </div>
 </template>
 
@@ -34,12 +32,12 @@ import { useViewModel } from "../utility";
 import { useTemporaryConnection } from "../editor/temporaryConnection";
 
 const ellipsis = (value: any, characters = 100) => {
-    const stringValue: string = typeof value?.toString === "function" ? String(value) : "";
+    let stringValue: string = typeof value?.toString === "function" ? String(value) : "";
 
     if (stringValue.length > characters) {
         return stringValue.slice(0, characters) + "...";
     }
-
+    stringValue += "1230:";
     return stringValue;
 };
 

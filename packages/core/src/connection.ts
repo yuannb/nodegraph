@@ -12,9 +12,9 @@ export interface IConnectionState extends Record<string, any> {
     /** id of the connection */
     id: string;
     /** id of the source interface */
-    from: string;
+    from_id: string;
     /** id of the target interface */
-    to: string;
+    to_id: string;
 }
 
 export class Connection implements IConnection, IBaklavaEventEmitter {
@@ -36,6 +36,11 @@ export class Connection implements IConnection, IBaklavaEventEmitter {
         this.from = from;
         this.to = to;
 
+        to.fromInterface = from;
+        if (to.name == "Panel")
+        {
+            to.analytic_value = from.analytic_value;
+        }
         this.from.connectionCount++;
         this.to.connectionCount++;
     }

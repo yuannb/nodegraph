@@ -13,7 +13,7 @@ import type { Editor } from "./editor";
 import { type GraphTemplate } from "./graphTemplate";
 import type { IAddConnectionEventData } from "./eventDataTypes";
 import type { AbstractNode, INodeState } from "./node";
-import type { NodeInterface } from "./nodeInterface";
+import { InterfaceType, NodeInterface } from "./nodeInterface";
 import {
     GRAPH_INPUT_NODE_TYPE,
     GRAPH_OUTPUT_NODE_TYPE,
@@ -24,12 +24,19 @@ import {
 
 export interface IGraphState {
     id: string;
+    date?: string;
     nodes: Array<INodeState<unknown, unknown>>;
     connections: IConnectionState[];
     /** @deprecated */
     inputs: Readonly<IGraphInterface[]>;
     /** @deprecated */
     outputs: Readonly<IGraphInterface[]>;
+
+    order?: string[];
+
+    changed_nodes?: Array<string>;
+    deleted_nodes?: Array<string>;
+    depended_nodes?: Array<string>;
 }
 
 export interface CheckConnectionHookResult {
@@ -50,8 +57,12 @@ export type CheckConnectionResult = PositiveCheckConnectionResult | NegativeChec
 
 export class Graph implements IBaklavaEventEmitter, IBaklavaTapable {
     public id = uuidv4();
+    public date = "";
     public editor: Editor;
     public template?: GraphTemplate;
+
+    public changed_nodes = new Set<string>();
+    public deleted_nodes = new Set<string>();
 
     public activeTransactions = 0;
 
@@ -142,6 +153,7 @@ export class Graph implements IBaklavaEventEmitter, IBaklavaTapable {
         this.nodeHooks.addTarget(node.hooks);
         node.registerGraph(this);
         this._nodes.push(node);
+        this.changed_nodes.add(node.id);
         // when adding the node to the array, it will be made reactive by Vue.
         // However, our current reference is the non-reactive version.
         // Therefore, we need to get the reactive version from the array.
@@ -161,6 +173,7 @@ export class Graph implements IBaklavaEventEmitter, IBaklavaTapable {
             if (this.events.beforeRemoveNode.emit(node).prevented) {
                 return;
             }
+            this.findAllNodeFromId(node.id);
             const interfaces = [...Object.values(node.inputs), ...Object.values(node.outputs)];
             this.connections
                 .filter((c) => interfaces.includes(c.from) || interfaces.includes(c.to))
@@ -170,6 +183,8 @@ export class Graph implements IBaklavaEventEmitter, IBaklavaTapable {
             node.onDestroy();
             this.nodeEvents.removeTarget(node.events);
             this.nodeHooks.removeTarget(node.hooks);
+            this.deleted_nodes.add(node.id);
+            this.changed_nodes.delete(node.id);
         }
     }
 
@@ -198,6 +213,8 @@ export class Graph implements IBaklavaEventEmitter, IBaklavaTapable {
 
         const c = new Connection(checkConnectionResult.dummyConnection.from, checkConnectionResult.dummyConnection.to);
         this.internalAddConnection(c);
+        this.changed_nodes.add(c.to.nodeId);
+        this.findAllNodeFromId(c.to.nodeId);
         return c;
     }
 
@@ -214,6 +231,8 @@ export class Graph implements IBaklavaEventEmitter, IBaklavaTapable {
             this._connections.splice(this.connections.indexOf(connection), 1);
             this.events.removeConnection.emit(connection);
             this.connectionEvents.removeTarget(connection.events);
+            this.changed_nodes.add(connection.to.id);
+            this.findAllNodeFromId(connection.to.id);
         }
     }
 
@@ -330,18 +349,58 @@ export class Graph implements IBaklavaEventEmitter, IBaklavaTapable {
                 }
 
                 const node = new nodeInformation.type();
+                const inputs_count = Object.keys(n.inputs).length;
+                const outputs_count = Object.keys(n.outputs).length;
+                if (inputs_count != Object.keys(node.inputs).length || true)
+                {
+                    const keys = Object.keys(node.inputs); 
+                    const lastKey = keys[keys.length - 1]; 
+                    const lastMember = node.inputs[lastKey];
+                    let constructor = (lastMember as object).constructor as new (
+                        key: string,
+                        value: any,
+                        dataType?: any,
+                    ) => NodeInterface;
+                    Object.entries(n.inputs).forEach(([key, data]) => {
+                        if (key in node.inputs == false)
+                        {
+                            node.addInput(key, new constructor(key, data.value, data.data_type));
+                            node.inputs[key].id = data.id;
+                        }
+                      });
+                }
+
+                if (outputs_count != Object.keys(node.outputs).length)
+                {
+                    const keys = Object.keys(node.outputs); 
+                    const lastKey = keys[keys.length - 1]; 
+                    const lastMember = node.outputs[lastKey];
+                    let constructor = (lastMember as object).constructor as new (
+                        key: string,
+                        value: any,
+                        dataType?: any,
+                    ) => NodeInterface;
+                    Object.entries(n.outputs).forEach(([key, data]) => {
+                        if (key in node.outputs == false)
+                        {
+                            node.addOutput(key, new constructor(key, data.value, data.data_type))
+                            node.outputs[key].id = data.id;
+                        }
+                      });
+                }
+
                 this.addNode(node);
                 node.load(n);
             }
 
             for (const c of state.connections) {
-                const fromIf = this.findNodeInterface(c.from);
-                const toIf = this.findNodeInterface(c.to);
+                const fromIf = this.findNodeInterface(c.from_id);
+                const toIf = this.findNodeInterface(c.to_id);
                 if (!fromIf) {
-                    warnings.push(`Could not find interface with id ${c.from}`);
+                    warnings.push(`Could not find interface with id ${c.from_id}`);
                     continue;
                 } else if (!toIf) {
-                    warnings.push(`Could not find interface with id ${c.to}`);
+                    warnings.push(`Could not find interface with id ${c.to_id}`);
                     continue;
                 } else {
                     const conn = new Connection(fromIf, toIf);
@@ -364,14 +423,17 @@ export class Graph implements IBaklavaEventEmitter, IBaklavaTapable {
     public save(): IGraphState {
         const state: IGraphState = {
             id: this.id,
+            date: this.date,
             nodes: this.nodes.map((n) => n.save()),
             connections: this.connections.map((c) => ({
                 id: c.id,
-                from: c.from.id,
-                to: c.to.id,
+                from_id: c.from.id,
+                to_id: c.to.id,
             })),
             inputs: this.inputs,
             outputs: this.outputs,
+            deleted_nodes : [...this.deleted_nodes],
+            changed_nodes : [...this.changed_nodes],
         };
         return this.hooks.save.execute(state);
     }
@@ -382,6 +444,85 @@ export class Graph implements IBaklavaEventEmitter, IBaklavaTapable {
             this.removeNode(n);
         }
         this.editor.unregisterGraph(this);
+    }
+
+    public findAllNodeFromId(node_id: string) 
+    {
+        const node = this.findNodeById(node_id);
+        if (node == undefined)
+        {
+            return;
+        }
+        
+        // const interfaceIdToNodeId = new Map<string, string>();
+        // this.nodes.forEach((n) => {
+        //     Object.values(n.inputs).forEach((intf) => interfaceIdToNodeId.set(intf.id, n.id));
+        //     Object.values(n.outputs).forEach((intf) => interfaceIdToNodeId.set(intf.id, n.id));
+        // });
+        let node_deque = [node];
+        while(node_deque.length != 0)
+        {
+            let current_node = node_deque.pop();
+            if (current_node == undefined)
+            {
+                continue;
+            }
+            const interfaces = [...Object.values(current_node.outputs)];
+            this.connections
+                .filter((c) => interfaces.includes(c.from))
+                .forEach((c) => 
+                    {
+                        // const next_node_id = interfaceIdToNodeId.get(c.to.nodeId);
+                        // if (next_node_id == undefined)
+                        // {
+                        //     return;
+                        // }
+                        // this.changed_nodes.add(next_node_id);
+                        this.changed_nodes.add(c.to.nodeId);
+                        const next_node = this.findNodeById(c.to.nodeId);
+                        if (next_node != undefined)
+                        {
+                            node_deque.push(next_node);
+                        } 
+                    });
+        }
+
+        return;
+    }
+
+    public findAllDependedNodeFromId(nodes_id: Set<string>) : Set<string>
+    {
+        let depended_nodes = new Set<string>();
+        // const interfaceIdToNodeId = new Map<string, string>();
+        // this.nodes.forEach((n) => {
+        //     Object.values(n.inputs).forEach((intf) => interfaceIdToNodeId.set(intf.id, n.id));
+        //     Object.values(n.outputs).forEach((intf) => interfaceIdToNodeId.set(intf.id, n.id));
+        // });
+        console.log("nodes_id: ", nodes_id)
+        for (const node_id of nodes_id)
+        {
+            const node = this.findNodeById(node_id);
+            if (node == undefined) {
+                continue;
+            }
+            const interfaces = [...Object.values(node.inputs)];
+            this.connections
+                .filter((c) => interfaces.includes(c.to))
+                .forEach((c) => 
+                    {
+                        // const next_id = interfaceIdToNodeId.get(c.from.id);
+                        // if (next_id == undefined)
+                        // {
+                        //     return;
+                        // }
+                        if (this.changed_nodes.has(c.from.nodeId))
+                        {
+                            return;
+                        }
+                        depended_nodes.add(c.from.nodeId);
+                    });
+        }
+        return depended_nodes;
     }
 
     private internalAddConnection(c: Connection) {

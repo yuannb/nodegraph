@@ -1,5 +1,5 @@
 <template>
-    <div>{{ intf.value }}</div>
+    <!-- <div>{{ intf.value }}</div> -->
 </template>
 
 <script lang="ts">

@@ -4,7 +4,8 @@
         "declarationDir": "dist",
         "lib": ["ESNext", "DOM", "DOM.Iterable", "ES2019"],
         "types": ["resize-observer-browser", "vite/client"],
-        "jsx": "preserve"
+        "jsx": "preserve",
+        "sourceMap": true
     },
     "include": ["./**/*.ts", "./**/*.vue", "../src/**/*.ts", "../src/**/*.vue"]
 }
